@@ -37,12 +37,19 @@
             <div id="map"></div>
 
             <div id="drought-legend" class="map-overlay">
-                <label class="legend-header">
-                    <input type="checkbox" id="drought-toggle" checked disabled />
-                    <span>U.S. Drought Monitor</span>
-                </label>
+                <div class="legend-title-row">
+                    <label class="legend-header">
+                        <input type="checkbox" id="drought-toggle" checked disabled />
+                        <span>U.S. Drought Monitor</span>
+                    </label>
+                    <button class="info-btn" data-info="drought" aria-label="About this data">i</button>
+                </div>
+                <div class="info-tooltip" id="info-drought">
+                    Weekly drought classification published by the National Drought Mitigation Center, based on precipitation, soil moisture, PDSI, and other indices — independent of streamflow. Updated every Thursday.
+                    <br><strong>Source:</strong> <a href="https://droughtmonitor.unl.edu" target="_blank" rel="noopener" style="color:var(--accent)">U.S. Drought Monitor</a>
+                </div>
                 <ul class="legend-scale">
-                    <li><span class="swatch" style="background:#f7dfb1"></span>D0 Abnormally Dry</li>
+                    <li><span class="swatch" style="background:#F7DFB1"></span>D0 Abnormally Dry</li>
                     <li><span class="swatch" style="background:#FCD37F"></span>D1 Moderate</li>
                     <li><span class="swatch" style="background:#FFAA00"></span>D2 Severe</li>
                     <li><span class="swatch" style="background:#E60000"></span>D3 Extreme</li>

@@ -73,7 +73,7 @@ const USDM_URL =
     '?where=1%3D1&outSR=4326&f=geojson&returnGeometry=true&geometryPrecision=4';
 
 const USDM_COLORS = {
-    0: '#f7dfb1', // D0 Abnormally Dry
+    0: '#F7DFB1', // D0 Abnormally Dry
     1: '#FCD37F', // D1 Moderate
     2: '#FFAA00', // D2 Severe
     3: '#E60000', // D3 Extreme
@@ -287,7 +287,22 @@ function renderStreamflowCard(sf, gage) {
 
     return `
         <div class="chart-card">
-            <h3>Current Streamflow</h3>
+            <div class="card-header">
+                <h3>Current Streamflow</h3>
+                <button class="info-btn" data-info="streamflow" aria-label="About this data">i</button>
+            </div>
+            <div class="info-tooltip" id="info-streamflow">
+                Latest daily-mean discharge (cfs) from the nearest USGS streamgage, ranked as a percentile against the 1991–2020 historical distribution for that day of year.
+                <br>
+                <ul class="legend-scale" style="margin-top:8px">
+                    <li><span class="swatch" style="background:#8B0000"></span>&lt; 10th — Much Below Normal</li>
+                    <li><span class="swatch" style="background:#E65100"></span>10th–25th — Below Normal</li>
+                    <li><span class="swatch" style="background:#4CAF50"></span>25th–75th — Normal</li>
+                    <li><span class="swatch" style="background:#1565C0"></span>75th–90th — Above Normal</li>
+                    <li><span class="swatch" style="background:#0D47A1"></span>&gt; 90th — Much Above Normal</li>
+                </ul>
+                <br><strong>Source:</strong> <a href="https://waterservices.usgs.gov" target="_blank" rel="noopener" style="color:var(--accent)">USGS WaterServices</a>
+            </div>
             ${liveBlock}
             <div class="sf-meta">
                 <div class="dc-row">
@@ -321,6 +336,16 @@ function renderForecastCard(forecast) {
     const barW = innerW / n * 0.7;
     const step = innerW / n;
 
+    const hatchDefs = `
+        <defs>
+            <pattern id="hatch-o" width="8" height="8" patternUnits="userSpaceOnUse">
+                <circle cx="4" cy="4" r="2.5" fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="0.8"/>
+            </pattern>
+            <pattern id="hatch-dot" width="5" height="5" patternUnits="userSpaceOnUse">
+                <circle cx="2.5" cy="2.5" r="0.8" fill="rgba(0,0,0,0.3)"/>
+            </pattern>
+        </defs>`;
+
     const bars = forecast.map((f, i) => {
         const x = PAD_L + i * step + (step - barW) / 2;
         const v = f.median_pct == null ? 0 : Math.max(0, Math.min(100, f.median_pct));
@@ -337,10 +362,18 @@ function renderForecastCard(forecast) {
                   y2="${PAD_T + innerH - (p05 / 100) * innerH}"
                   stroke="#8892a8" stroke-width="1" opacity="0.6"/>` : '';
 
+        let hatchOverlay = '';
+        if (i >= 1 && i <= 6) {
+            hatchOverlay = `<rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="url(#hatch-o)" rx="1"/>`;
+        } else if (i >= 7) {
+            hatchOverlay = `<rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="url(#hatch-dot)" rx="1"/>`;
+        }
+
         return `
             <g>
                 <title>${f.date} — ${f.median_pct == null ? '—' : f.median_pct + 'th percentile'}</title>
                 <rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${color}" rx="1"/>
+                ${hatchOverlay}
                 ${ci}
             </g>`;
     }).join('');
@@ -369,8 +402,28 @@ function renderForecastCard(forecast) {
 
     return `
         <div class="chart-card">
-            <h3>13-Week Streamflow Forecast</h3>
+            <div class="card-header">
+                <h3>13-Week Streamflow Forecast</h3>
+                <button class="info-btn" data-info="forecast" aria-label="About this data">i</button>
+            </div>
+            <div class="info-tooltip" id="info-forecast">
+                <ul class="legend-scale">
+                    <li>First Bar: Current Week</li>
+                    <li>"○" Bars: High Confidence Weeks</li>
+                    <li>"." Bars: Low Confidence Weeks</li>
+                </ul>
+                <br>
+                <ul class="legend-scale" style="margin-top:8px">
+                    <li><span class="swatch" style="background:#8B0000"></span>&lt; 10th — Much Below Normal</li>
+                    <li><span class="swatch" style="background:#E65100"></span>10th–25th — Below Normal</li>
+                    <li><span class="swatch" style="background:#4CAF50"></span>25th–75th — Normal</li>
+                    <li><span class="swatch" style="background:#1565C0"></span>75th–90th — Above Normal</li>
+                    <li><span class="swatch" style="background:#0D47A1"></span>&gt; 90th — Much Above Normal</li>
+                </ul>
+                <br><strong>Source:</strong> <a href="https://www.usgs.gov/tools/river-droughtcast" target="_blank" rel="noopener" style="color:var(--accent)">USGS River DroughtCast</a>
+            </div>
             <svg class="forecast-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+                ${hatchDefs}
                 ${yTicks}
                 ${bars}
                 ${xLabels}
@@ -379,7 +432,6 @@ function renderForecastCard(forecast) {
                     percentile
                 </text>
             </svg>
-            <div class="sf-note">Ensemble of LSTM + LightGBM models. Whiskers show 5–95% prediction interval.</div>
         </div>`;
 }
 
@@ -425,6 +477,29 @@ function updateSidebar(props, coords) {
             </div>
         </div>`;
 }
+
+// ── Info-tooltip toggle (click to show/hide) ─────────────────────────────────
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.info-btn');
+    if (btn) {
+        const key = btn.getAttribute('data-info');
+        const tip = document.getElementById(`info-${key}`);
+        if (tip) {
+            const isOpen = tip.classList.contains('visible');
+            document.querySelectorAll('.info-tooltip.visible').forEach(t => t.classList.remove('visible'));
+            document.querySelectorAll('.info-btn.active').forEach(b => b.classList.remove('active'));
+            if (!isOpen) {
+                tip.classList.add('visible');
+                btn.classList.add('active');
+            }
+        }
+        return;
+    }
+    if (!e.target.closest('.info-tooltip')) {
+        document.querySelectorAll('.info-tooltip.visible').forEach(t => t.classList.remove('visible'));
+        document.querySelectorAll('.info-btn.active').forEach(b => b.classList.remove('active'));
+    }
+});
 
 // ── Expose map for future modules ─────────────────────────────────────────────
 window.terraMap = map;
